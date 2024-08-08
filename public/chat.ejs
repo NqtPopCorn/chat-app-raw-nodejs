@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css"
+            integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk="
+            crossorigin="anonymous"
+        />
+        <link rel="stylesheet" href="css/style.css" />
+        <title>WebCage Chat App</title>
+    </head>
+    <body>
+        <div class="chat-container">
+            <header class="chat-header">
+                <h1 style="display: flex; gap: 6px">
+                    <span
+                        style="
+                            background-image: url('./img/cbpWallpaper.jpg');
+                            background-size: cover;
+                            background-position: center;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                        "
+                    ></span
+                    ><%= username %>
+                </h1>
+                <a class="btn" id="leave-btn">Sign out</a>
+            </header>
+
+            <main class="chat-main">
+                <ul class="chat-sidebar" id="group-sidebar"></ul>
+                <div class="chat-messages-bg">
+                    <div class="top-sidebar">
+                        <i class="fas fa-comments"
+                            ><span id="room-name">Room name</span></i
+                        >
+                        <i
+                            class="fas fa-users-cog"
+                            onclick="handleClickRoomTasks(event)"
+                        ></i>
+                    </div>
+                    <div class="chat-messages">
+                        <i
+                            class="fab fa-earlybirds fa-10x"
+                            style="color: rgb(255, 110, 226)"
+                        ></i>
+                        <div style="font-size: 30px; color: rgb(255, 110, 226)">
+                            Welcome to My Chat Application
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <div class="chat-form-container">
+                <form id="chat-form">
+                    <input
+                        id="msg"
+                        type="text"
+                        placeholder="Type a Message"
+                        required
+                        autocomplete="off"
+                    />
+                    <button class="btn-plane">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/qs/6.9.2/qs.min.js"
+            integrity="sha256-TDxXjkAUay70ae/QJBEpGKkpVslXaHHayklIVglFRT4="
+            crossorigin="anonymous"
+        ></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="js/chat.js"></script>
+    </body>
+</html>
