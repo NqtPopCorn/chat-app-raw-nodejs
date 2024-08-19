@@ -126,7 +126,7 @@ a {
     padding: 6px;
 }
 .chat-sidebar li:hover {
-    background-color: rgba(97, 166, 255, 0.54);
+    background-color: rgba(146, 193, 255, 0.262);
 }
 
 .chat-sidebar i {
@@ -136,7 +136,7 @@ a {
 }
 
 .chat-sidebar li.selected {
-    background-color: antiquewhite;
+    background-color: #73ffeda6;
 }
 
 .chat-messages-bg {
@@ -195,16 +195,17 @@ a {
     margin-left: auto;
 }
 
-.your-message {
+.chat-messages .your-message {
     margin-right: 0;
     margin-left: auto;
     text-align: right;
 }
 
-.other-message {
+.chat-messages .other-message {
     margin-left: 0;
     margin-right: auto;
     text-align: left;
+    background-color: #343f85;
 }
 
 .text {

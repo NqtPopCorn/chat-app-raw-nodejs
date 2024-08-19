@@ -5,8 +5,8 @@ function formatMessage(username, text, timestamp) {
         username,
         text,
         time: timestamp
-            ? moment(timestamp).format("DD/MM h:mm a")
-            : moment().format("DD/MM h:mm a"),
+            ? moment(timestamp).format("YYYY-MM-DD hh:mm:ss")
+            : moment().format("YYYY-MM-DD hh:mm:ss"),
     };
 }
 

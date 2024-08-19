@@ -1,21 +1,23 @@
 const users = [];
 
-// Join user to chat
-function activeUser(socketId, uid, username, room) {
-    const user = { socketId, uid, username, room };
+function activeUser(socketId, uid, username) {
+    const user = { socketId, uid, username };
 
     users.push(user);
 
     return;
 }
 
-// Get current user
-function getActiveUser(uid) {
+function getActiveUserByUID(uid) {
     return users.find((user) => user.uid === uid);
 }
 
+function getActiveUserBySocketID(socketId) {
+    return users.find((user) => user.socketId === socketId);
+}
+
 // User leaves chat
-function exitRoom(uid) {
+function signOut(uid) {
     const index = users.findIndex((user) => user.uid === uid);
 
     if (index !== -1) {
@@ -23,14 +25,9 @@ function exitRoom(uid) {
     }
 }
 
-// Get users from room
-function getIndividualRoomUsers(room) {
-    return users.filter((user) => user.room === room);
-}
-
 module.exports = {
     activeUser,
-    getActiveUser,
-    exitRoom,
-    getIndividualRoomUsers,
+    getActiveUserByUID,
+    getActiveUserBySocketID,
+    signOut,
 };

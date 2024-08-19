@@ -3,27 +3,27 @@
 const path = require("path");
 const http = require("http");
 const express = require("express");
-const socketio = require("socket.io");
+const { Server } = require("socket.io");
 const session = require("express-session");
-const sharedSession = require("socket.io-express-session");
 const formatMessage = require("./helpers/formatDate");
 const {
-    getActiveUser,
-    exitRoom,
     activeUser,
-    getIndividualRoomUsers,
+    getActiveUserByUID,
+    getActiveUserBySocketID,
+    signOut,
 } = require("./helpers/userHelper");
 const mysql = require("mysql2");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server);
+const io = new Server(server);
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "public"));
 
 //body parser for POST requests
 var bodyParser = require("body-parser");
+const { stat } = require("fs");
 app.use(bodyParser.json()); // to support JSON-encoded bodies
 app.use(
     bodyParser.urlencoded({
@@ -39,12 +39,10 @@ const sessionMiddleware = session({
     cookie: { secure: false }, // Đặt thành true nếu sử dụng HTTPS
 });
 app.use(sessionMiddleware);
-// Share session with Socket.io
-io.use(
-    sharedSession(sessionMiddleware, {
-        autoSave: true,
-    })
-);
+// Chia sẻ sessionMiddleware với Socket.IO
+io.use((socket, next) => {
+    sessionMiddleware(socket.request, {}, next); //
+});
 
 // Tạo kết nối đến cơ sở dữ liệu
 const connection = mysql.createConnection({
@@ -102,17 +100,46 @@ app.get("/chat", (req, res) => {
 
 // this block will run when the client connects
 io.on("connection", (socket) => {
-    let user = socket.handshake.session.user;
-    user = {
-        ...socket.handshake.session.user,
-        socketId: socket.id,
-    };
-    socket.handshake.session.user = user;
-    socket.handshake.session.save();
+    const session = socket.request.session;
+    const user = session.user;
+    socket.user = user;
+
+    async function getUsersInRoom(room_id) {
+        const users = [];
+        const onlineUser = Array.from(io.sockets.sockets.values()).map(
+            (socket) => socket.user.uid
+        );
+
+        try {
+            const rows = await new Promise((resolve, reject) => {
+                connection.query(
+                    `SELECT u.id, u.username FROM users u join user_group ug on u.id = ug.user_id WHERE u.id != ${user.uid} and group_id=${room_id}`,
+                    (err, results) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        resolve(results);
+                    }
+                );
+            });
+
+            rows.forEach((row) => {
+                let status = "offline";
+                if (onlineUser.includes(row.id)) {
+                    status = "online";
+                }
+                users.push({ uid: row.id, username: row.username, status });
+            });
+
+            return users;
+        } catch (err) {
+            console.error("Error executing query", err);
+            return [];
+        }
+    }
 
     //Listen for login, emit rooms
     socket.on("login", () => {
-        console.log("login", user.socketId);
         connection.query(
             `SELECT g.id, g.name FROM user_group ug JOIN \`groups\` g on ug.group_id=g.id WHERE ug.user_id = ${user.uid}`,
             (err, rooms) => {
@@ -133,10 +160,6 @@ io.on("connection", (socket) => {
 
     // Listen for joining a room
     socket.on("joinRoom", ({ room_id }) => {
-        user = { ...user, room: room_id };
-        socket.handshake.session.user = user;
-        socket.handshake.session.save();
-        //Emit reply to client
         // General welcome
         socket.emit(
             "message",
@@ -152,53 +175,79 @@ io.on("connection", (socket) => {
                     console.error("Error executing query", err);
                     return;
                 }
-                const formattedMessages = messages.map((message) =>
-                    formatMessage(
-                        message.uid == user.uid ? "You" : message.username,
-                        message.text,
-                        message.sent_at
-                    )
-                );
-                socket.emit(
-                    "messages",
-                    formattedMessages,
-                    socket.id == user.socketId ? "you" : "other"
-                );
+                messages.forEach((message) => {
+                    socket.emit(
+                        "message",
+                        formatMessage(
+                            message.uid == user.uid ? "You" : message.username,
+                            message.text,
+                            message.sent_at
+                        ),
+                        message.uid == user.uid ? "you" : "other",
+                        room_id
+                    );
+                });
             }
         );
-        // Debug only: Broadcast everytime users connects
-        // socket.broadcast
-        //     .to(room_id)
-        //     .emit(
-        //         "log",
-        //         formatMessage(
-        //             "WebCage",
-        //             `${user.username} has joined the room`
-        //         ),
-        //         "other",
-        //         room_id
-        //     );
     });
 
     // Listen for client message
-    socket.on("chatMessage", (msg) => {
-        console.log("chatMessage", msg);
+    socket.on("chatMessage", ({ msg, room }) => {
+        //save to database
+        connection.query(
+            `INSERT INTO messages (user_id, group_id, \`text\`) VALUES (${user.uid}, ${room}, '${msg}')`,
+            (err, result) => {
+                if (err) {
+                    console.error("Error executing query", err);
+                    return;
+                }
+                console.log("chatMessage", msg);
+            }
+        );
         const formattedMessage = formatMessage(user.username, msg);
         socket.broadcast
-            .to(user.room)
-            .emit("message", formattedMessage, "other", user.room);
-        socket.emit("message", formattedMessage, "you", user.room);
+            .to(room)
+            .emit("message", formattedMessage, "other", room);
+        socket.emit("message", formattedMessage, "you", room);
+    });
+
+    socket.on("room-users", async (room_id) => {
+        const users = await getUsersInRoom(room_id);
+        socket.emit("room-users", users);
     });
 
     // Runs when client disconnects
     socket.on("disconnect", () => {
-        if (user) {
-            io.to(user.room).emit(
-                "message",
-                formatMessage("WebCage", `${user.username} has left the room`)
-            );
-        }
+        //
     });
+
+    if (!socket.recovered) {
+        const offset =
+            socket.handshake.auth.last_message_time || "2020-01-01 00:00:00";
+        const room = socket.handshake.auth.currentRoom;
+        if (!room) return;
+        connection.query(
+            `SELECT * FROM messages WHERE group_id = ${room} and sent_at > '${offset}'`,
+            (err, messages) => {
+                if (err) {
+                    console.error("Error executing query", err);
+                    return;
+                }
+                messages.forEach((message) => {
+                    socket.emit(
+                        "message",
+                        formatMessage(
+                            message.uid == user.uid ? "You" : message.username,
+                            message.text,
+                            message.sent_at
+                        ),
+                        message.uid == user.uid ? "you" : "other",
+                        room
+                    );
+                });
+            }
+        );
+    }
 });
 
 app.get("/index.html", (req, res) => {
