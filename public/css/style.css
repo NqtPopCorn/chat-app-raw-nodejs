@@ -153,14 +153,15 @@ a {
 
 .top-sidebar {
     position: sticky;
-    min-height: 40px;
-    max-height: 50px;
+    min-height: 50px;
+    max-height: 60px;
     margin-bottom: 10px;
     top: 0;
     left: 0;
     right: 0;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     background-color: #000b55;
     color: wheat;
     font-size: x-large;
@@ -313,6 +314,29 @@ i.fas.fa-paper-plane {
 .flex {
     display: grid;
     place-content: center;
+}
+
+.tasks-container {
+    position: absolute;
+    width: 50%;
+    background-color: #611e94;
+    color: white;
+    top: 100%;
+    left: 50%;
+    display: none;
+    padding: 6px;
+}
+
+.room-tasks > .user {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    margin-top: 4px;
+}
+
+.show {
+    display: block;
 }
 
 @media (max-width: 700px) {

@@ -1,10 +1,14 @@
 const chatForm = document.getElementById("chat-form");
 const chatMessages = document.querySelector(".chat-messages");
 const roomName = document.getElementById("room-name");
-const userList = document.getElementById("users");
+// const userList = document.getElementById("users");
 const sidebar = document.getElementById("group-sidebar");
 const btnToggleConnnection = document.getElementById("btn-toggle-connection");
+const roomTasksBtn = document.getElementById("room-tasks-btn");
 const roomTasks = document.getElementById("room-tasks");
+const roomTasksContainer = document.querySelector(
+    ".top-sidebar > .tasks-container"
+);
 
 // Get username and room from URL
 const { uid, room } = Qs.parse(location.search, {
@@ -53,6 +57,7 @@ socket.on("message", (message, sender, room) => {
 
 // send a message, emit "chatMessage" event
 chatForm.addEventListener("submit", (e) => {
+    const currentRoom = socket.auth.currentRoom;
     e.preventDefault();
 
     // Get message text
@@ -97,16 +102,16 @@ function outputMessage(message, isYour) {
         document.querySelector(".chat-messages-bg").scrollHeight;
 }
 
-// Add users to DOM
-function outputUsers(users) {
-    console.log({ users });
-    userList.innerHTML = "";
-    users.forEach((user) => {
-        const li = document.createElement("li");
-        li.innerText = user.username;
-        userList.appendChild(li);
-    });
-}
+// // Add users to DOM
+// function outputUsers(users) {
+//     console.log({ users });
+//     userList.innerHTML = "";
+//     users.forEach((user) => {
+//         const li = document.createElement("li");
+//         li.innerText = user.username;
+//         userList.appendChild(li);
+//     });
+// }
 
 function outputRoom(rooms) {
     sidebar.innerHTML = "";
@@ -147,13 +152,17 @@ function handleClickGroup(event, room) {
     roomName.innerText = room.name;
 
     // Get room users
-    roomTasks.onclick = (event) => {
+    roomTasksBtn.onclick = (event) => {
         handleClickRoomTasks(event, room);
     };
+
+    roomTasksContainer.classList.remove("show");
 }
 
 function handleClickRoomTasks(event, room) {
     console.log("handleClickRoomTasks");
+    roomTasksContainer.classList.toggle("show");
+
     //TODO: show all user in room
     socket.emit("room-users", room.id);
 }
@@ -169,5 +178,27 @@ btnToggleConnnection.addEventListener("click", () => {
 });
 
 socket.on("room-users", (users) => {
-    console.log("room-users", users);
+    outputRoomUsers(users);
 });
+
+function outputRoomUsers(users) {
+    console.log("outputRoomUsers", users);
+    roomTasks.innerHTML = "";
+    users.forEach((user) => {
+        const div = document.createElement("div");
+        div.classList.add("user");
+        div.innerHTML = `
+        <div>
+            <i class="fas fa-user"></i>
+            <span class="room-name">${user.username}</span>
+        </div>
+        <div>
+        ${
+            user.status == "online"
+                ? '<i class="fas fa-circle" style="color: #63E6BE;"></i>Online'
+                : "Offline"
+        }
+        </div>`;
+        roomTasks.appendChild(div);
+    });
+}
